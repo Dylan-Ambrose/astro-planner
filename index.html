@@ -4,16 +4,24 @@
     <title>Astro Planner</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Arial Rounded MT Bold, sans-serif;
             background: #0f0f1a;
             color: #eee;
             padding: 40px;
+            max-width: 700px;
+            margin: 0 auto;
         }
         h1 {
             color: #a5b4fc;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
         }
         .search-bar {
-            margin-bottom: 24px;
+            margin-bottom: 12px;
         }
         input {
             padding: 10px;
@@ -33,19 +41,52 @@
             cursor: pointer;
             margin-left: 8px;
         }
+        .explainer {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #bbb;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .explainer b {
+            color: #a5b4fc;
+        }
         .night {
             background: #1a1a2e;
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .night.best {
             border: 2px solid #4ade80;
         }
-        .score {
-            font-size: 22px;
-            font-weight: bold;
+        .night-info {
+            flex: 1;
         }
+        .date-line {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .day-name {
+            color: #a5b4fc;
+        }
+        .score-badge {
+            font-size: 24px;
+            font-weight: bold;
+            min-width: 70px;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+        .score-great { background: #16a34a33; color: #4ade80; }
+        .score-good { background: #ca8a0433; color: #facc15; }
+        .score-poor { background: #dc262633; color: #f87171; }
         .error {
             color: #f87171;
         }
@@ -53,15 +94,33 @@
 </head>
 <body>
     <h1>Best Nights to Shoot</h1>
+    <div class="subtitle">Find the clearest, darkest nights for astrophotography</div>
 
     <div class="search-bar">
         <input type="text" id="locationInput" placeholder="Enter a location, e.g. London" />
         <button onclick="search()">Search</button>
     </div>
 
+    <div class="explainer">
+        <b>How the score works:</b> Each night is scored out of 100 — higher is better.
+        We weigh clear skies more heavily than a dark moon, since cloud cover matters most for visibility.
+        A score of 80+ is a great night to shoot; below 40 means it's probably not worth the trip.
+    </div>
+
     <div id="results">Type a location above to get started.</div>
 
     <script>
+        function getDayName(dateStr) {
+            const d = new Date(dateStr + "T00:00:00");
+            return d.toLocaleDateString("en-GB", { weekday: "long" });
+        }
+
+        function scoreClass(score) {
+            if (score >= 70) return "score-great";
+            if (score >= 40) return "score-good";
+            return "score-poor";
+        }
+
         async function search() {
             const place = document.getElementById("locationInput").value;
             const container = document.getElementById("results");
@@ -74,7 +133,6 @@
             container.innerHTML = "Looking up location...";
 
             try {
-                // Step 1: turn the place name into coordinates
                 const geoResponse = await fetch(
                     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1`
                 );
@@ -91,7 +149,6 @@
 
                 container.innerHTML = `Loading data for ${foundName}...`;
 
-                // Step 2: get the best nights for those coordinates
                 const response = await fetch(`https://astro-planner-api.onrender.com/best-nights?lat=${lat}&lon=${lon}`);
                 const nights = await response.json();
 
@@ -99,10 +156,15 @@
                 nights.forEach((night, index) => {
                     const div = document.createElement("div");
                     div.className = "night" + (index === 0 ? " best" : "");
+                    const dayName = getDayName(night.date);
+
                     div.innerHTML = `
-                        <div class="score">${night.date} — Score: ${night.score}</div>
-                        <div>Cloud cover: ${night.avg_night_cloud_cover_percent}%</div>
-                        <div>Moonlight: ${night.moon_illumination_percent}% (${night.moon_phase})</div>
+                        <div class="night-info">
+                            <div class="date-line"><span class="day-name">${dayName}</span> — ${night.date}</div>
+                            <div>Cloud cover: ${night.avg_night_cloud_cover_percent}%</div>
+                            <div>Moonlight: ${night.moon_illumination_percent}% (${night.moon_phase})</div>
+                        </div>
+                        <div class="score-badge ${scoreClass(night.score)}">${night.score}</div>
                     `;
                     container.appendChild(div);
                 });

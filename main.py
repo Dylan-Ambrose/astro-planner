@@ -99,17 +99,18 @@ def best_nights(lat: float, lon: float):
         if avg_cloud is None:
             continue
 
-        # Weighted score: cloud cover matters more than moon illumination.
-        # 70% weight on cloud, 30% weight on moon — lower score is better.
-        score = (avg_cloud * 0.7) + (night["moon_illumination"] * 0.3)
+        # Quality score out of 100 — higher is better.
+        # We start from 100 (perfect) and subtract penalties for cloud and moonlight.
+        quality_score = 100 - ((avg_cloud * 0.7) + (night["moon_illumination"] * 0.3))
+        quality_score = round(max(quality_score, 0), 1)  # never show below 0
 
         results.append({
             "date": night["date"],
             "avg_night_cloud_cover_percent": avg_cloud,
             "moon_illumination_percent": night["moon_illumination"],
             "moon_phase": night["moon_phase"],
-            "score": round(score, 1)
+            "score": quality_score
         })
 
-    results.sort(key=lambda x: x["score"])
+    results.sort(key=lambda x: x["score"], reverse=True)
     return results
