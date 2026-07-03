@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Astro Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f0f1a;
+            color: #eee;
+            padding: 40px;
+        }
+        h1 {
+            color: #a5b4fc;
+        }
+        .night {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .night.best {
+            border: 2px solid #4ade80;
+        }
+        .score {
+            font-size: 22px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Best Nights to Shoot</h1>
+    <div id="results">Loading...</div>
+
+    <script>
+        fetch("http://127.0.0.1:8000/best-nights?lat=56.56&lon=-2.59")
+            .then(response => response.json())
+            .then(nights => {
+                const container = document.getElementById("results");
+                container.innerHTML = "";
+
+                nights.forEach((night, index) => {
+                    const div = document.createElement("div");
+                    div.className = "night" + (index === 0 ? " best" : "");
+                    div.innerHTML = `
+                        <div class="score">${night.date} — Score: ${night.score}</div>
+                        <div>Cloud cover: ${night.avg_night_cloud_cover_percent}%</div>
+                        <div>Moon: ${night.moon_illumination_percent}% (${night.moon_phase})</div>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+    </script>
+</body>
+</html>
