@@ -12,6 +12,27 @@
         h1 {
             color: #a5b4fc;
         }
+        .search-bar {
+            margin-bottom: 24px;
+        }
+        input {
+            padding: 10px;
+            font-size: 15px;
+            border-radius: 6px;
+            border: none;
+            width: 240px;
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 15px;
+            border-radius: 6px;
+            border: none;
+            background: #4ade80;
+            color: #0f0f1a;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 8px;
+        }
         .night {
             background: #1a1a2e;
             border-radius: 8px;
@@ -25,30 +46,71 @@
             font-size: 22px;
             font-weight: bold;
         }
+        .error {
+            color: #f87171;
+        }
     </style>
 </head>
 <body>
     <h1>Best Nights to Shoot</h1>
-    <div id="results">Loading...</div>
+
+    <div class="search-bar">
+        <input type="text" id="locationInput" placeholder="Enter a location, e.g. London" />
+        <button onclick="search()">Search</button>
+    </div>
+
+    <div id="results">Type a location above to get started.</div>
 
     <script>
-        fetch("http://127.0.0.1:8000/best-nights?lat=56.56&lon=-2.59")
-            .then(response => response.json())
-            .then(nights => {
-                const container = document.getElementById("results");
-                container.innerHTML = "";
+        async function search() {
+            const place = document.getElementById("locationInput").value;
+            const container = document.getElementById("results");
 
+            if (!place) {
+                container.innerHTML = '<div class="error">Please enter a location.</div>';
+                return;
+            }
+
+            container.innerHTML = "Looking up location...";
+
+            try {
+                // Step 1: turn the place name into coordinates
+                const geoResponse = await fetch(
+                    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1`
+                );
+                const geoData = await geoResponse.json();
+
+                if (!geoData.results || geoData.results.length === 0) {
+                    container.innerHTML = '<div class="error">Location not found. Try a different spelling.</div>';
+                    return;
+                }
+
+                const lat = geoData.results[0].latitude;
+                const lon = geoData.results[0].longitude;
+                const foundName = geoData.results[0].name;
+
+                container.innerHTML = `Loading data for ${foundName}...`;
+
+                // Step 2: get the best nights for those coordinates
+                const response = await fetch(`http://127.0.0.1:8000/best-nights?lat=${lat}&lon=${lon}`);
+                const nights = await response.json();
+
+                container.innerHTML = "";
                 nights.forEach((night, index) => {
                     const div = document.createElement("div");
                     div.className = "night" + (index === 0 ? " best" : "");
                     div.innerHTML = `
                         <div class="score">${night.date} — Score: ${night.score}</div>
                         <div>Cloud cover: ${night.avg_night_cloud_cover_percent}%</div>
-                        <div>Moon: ${night.moon_illumination_percent}% (${night.moon_phase})</div>
+                        <div>Moonlight: ${night.moon_illumination_percent}% (${night.moon_phase})</div>
                     `;
                     container.appendChild(div);
                 });
-            });
+            } catch (error) {
+                container.innerHTML = '<div class="error">Something went wrong. Check the console for details.</div>';
+                console.error(error);
+            }
+        }
     </script>
 </body>
 </html>
